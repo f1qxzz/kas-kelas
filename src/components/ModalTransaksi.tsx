@@ -12,24 +12,25 @@ interface Props {
   open: boolean
   onClose: () => void
   onSaved: () => void
+  defaultType?: string
   editData?: {
     id: string; type: string; amount: number; categoryId: string; description: string; date: string
   } | null
 }
 
-export function ModalTransaksi({ open, onClose, onSaved, editData }: Props) {
+export function ModalTransaksi({ open, onClose, onSaved, defaultType, editData }: Props) {
   const [type, setType] = useState("pengeluaran")
   const [amount, setAmount] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [description, setDescription] = useState("")
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(() => new Date().toLocaleDateString("en-CA"))
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
   const [showNewCat, setShowNewCat] = useState(false)
   const [newCatName, setNewCatName] = useState("")
 
   const loadCategories = () =>
-    fetch("/api/transactions/stats").then((r) => r.json()).then((data) => setCategories(data.categories))
+    fetch("/api/categories").then((r) => r.json()).then(setCategories)
 
   useEffect(() => {
     if (!open) return
@@ -41,8 +42,8 @@ export function ModalTransaksi({ open, onClose, onSaved, editData }: Props) {
       setDescription(editData.description)
       setDate(editData.date.slice(0, 10))
     } else {
-      setType("pengeluaran"); setAmount(""); setCategoryId(""); setDescription("")
-      setDate(new Date().toISOString().slice(0, 10))
+      setType(defaultType || "pengeluaran"); setAmount(""); setCategoryId(""); setDescription("")
+      setDate(new Date().toLocaleDateString("en-CA"))
     }
   }, [open, editData])
 
@@ -66,12 +67,10 @@ export function ModalTransaksi({ open, onClose, onSaved, editData }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setLoading(true)
-    const body = {
-      ...(editData ? { id: editData.id } : {}),
-      type, amount: parseInt(amount.replace(/\./g, "")), categoryId, description, date,
-    }
-    const res = await fetch("/api/transactions", {
-      method: editData ? "PUT" : "POST",
+    const body = { type, amount: parseInt(amount.replace(/\./g, "")), categoryId, description, date }
+    const isEdit = !!editData
+    const res = await fetch(isEdit ? `/api/transactions/${editData!.id}` : "/api/transactions", {
+      method: isEdit ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     })

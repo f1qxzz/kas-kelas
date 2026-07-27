@@ -1,0 +1,74 @@
+========================================
+  PANDUAN PEMAKAIAN KAS KELAS
+  https://kas-kelas-three.vercel.app
+========================================
+
+----------------------------------------
+  1. LOGIN
+----------------------------------------
+
+Masuk pake nama (lowercase) + password.
+
+Bendahara:
+  Nama: bendahara
+  Pass: bendahara123
+  Bisa: tambah/edit/hapus transaksi, kelola siswa, buat periode
+
+Ketua:
+  Nama: ketua
+  Pass: ketua123
+  Bisa: lihat semua, gak bisa nulis
+
+Wali Kelas:
+  Nama: wali
+  Pass: wali123
+  Bisa: lihat semua, gak bisa nulis
+
+----------------------------------------
+  2. HALAMAN
+----------------------------------------
+
+Dashboard (/) - Beranda
+- Saldo total kas (merah kalo minus)
+- Ringkasan pemasukan & pengeluaran bulan ini
+- Grafik 7 hari terakhir
+
+Pemasukan (/income) - Iuran & transaksi masuk
+- Iuran per minggu (navigasi panah kiri/kanan)
+- Pemasukan lainnya di accordion (Kas Harian, Kegiatan, dll)
+- Bendahara: tambah/edit/hapus transaksi non-iuran
+- Toast hijau kalo berhasil simpan/hapus
+
+Pengeluaran (/outcome) - Catat pengeluaran
+- Navigasi bulan
+- Kategori: Konsumsi, Alat Tulis, Dokumen, Lainnya
+- Bendahara: tambah/edit/hapus
+- Peringatan merah otomatis kalo saldo minus
+
+Status Bayar (/status-bayar) - Tagih iuran
+- Pilih periode, lihat progress bar
+- Klik siswa buat toggle Lunas/Belum
+- Filter: Semua / Lunas / Belum
+- Bayar Semua: centang semua sekali klik
+- Kelola: tambah/edit/nonaktifkan siswa
+
+
+Laporan (/laporan) - Cetak & export
+- Tab Keuangan: ringkasan + tabel per periode/kategori
+- Tab Pembayaran: rekap per siswa per periode
+- Tombol Cetak/PDF (print-friendly)
+- Tombol CSV (buka pake Excel)
+
+----------------------------------------
+  3. ATURAN PENTING
+----------------------------------------
+
+- Iuran: Rp3.000/siswa/minggu (otomatis)
+- Password: plain text (bisa diganti di database)
+- Hanya Bendahara yang bisa nulis data
+- Bendahara bikin periode baru tiap minggu
+
+----------------------------------------
+  DIBUAT OLEH: f1q ganteng
+  FRAMEWORK: Next.js + Supabase + Prisma
+========================================

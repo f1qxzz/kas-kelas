@@ -4,20 +4,30 @@ import { useState, useEffect } from "react"
 import { signIn, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { motion } from "motion/react"
-import { Wallet } from "lucide-react"
+import { Wallet, Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
 
-  useEffect(() => {
-    if (session) router.push("/")
-  }, [session, router])
-
   const [name, setName] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+
+  useEffect(() => {
+    if (status === "unauthenticated") return
+    if (status === "authenticated" && session) router.push("/")
+  }, [session, status, router])
+
+  if (status === "loading") {
+    return (
+      <div suppressHydrationWarning className="flex min-h-screen items-center justify-center bg-surface">
+        <div suppressHydrationWarning className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+      </div>
+    )
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -81,14 +91,23 @@ export default function LoginPage() {
 
             <div>
               <label className="mb-1.5 block text-xs font-medium text-gray-500">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-field"
-                placeholder="Masukkan password"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field pr-10"
+                  placeholder="Masukkan password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <motion.button
@@ -100,23 +119,7 @@ export default function LoginPage() {
               {loading ? "Memproses..." : "Masuk"}
             </motion.button>
 
-            <div className="rounded-xl bg-white/[0.03] border border-white/[0.04] p-4 text-xs text-gray-500">
-              <p className="mb-2 font-medium text-gray-400">Akun Demo:</p>
-              <div className="space-y-1.5">
-                {[
-                  ["bendahara", "bendahara123", "Bendahara"],
-                  ["ketua", "ketua123", "Ketua"],
-                  ["wali", "wali123", "Wali Kelas"],
-                ].map(([u, p, r]) => (
-                  <div key={u} className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-indigo-500/50" />
-                    <span className="text-gray-400">{u}</span>
-                    <span className="text-gray-600">· {p}</span>
-                    <span className="ml-auto text-gray-600">{r}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+
           </form>
         </div>
       </motion.div>

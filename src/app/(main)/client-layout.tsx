@@ -15,18 +15,25 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   if (status === "loading") {
     return (
-      <div className="flex h-screen items-center justify-center bg-surface">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+      <div suppressHydrationWarning className="flex h-screen items-center justify-center bg-surface">
+        <div suppressHydrationWarning className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
       </div>
     )
   }
 
-  if (!session) return null
+  if (!session) {
+    if (typeof window !== "undefined") router.push("/login")
+    return (
+      <div suppressHydrationWarning className="flex h-screen items-center justify-center bg-surface">
+        <div suppressHydrationWarning className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+      </div>
+    )
+  }
 
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="min-h-screen bg-surface">
       <Sidebar />
-      <main className="flex-1 p-6 md:pl-16 max-md:px-4 max-md:pb-20 max-md:pt-4">
+      <main className="p-4 md:ml-14 md:pr-8 md:py-6 max-md:pb-[68px]">
         {children}
       </main>
     </div>

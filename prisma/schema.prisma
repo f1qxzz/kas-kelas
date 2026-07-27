@@ -8,33 +8,60 @@ datasource db {
 }
 
 model User {
-  id        String        @id @default(cuid())
-  name      String
-  password  String
-  role      String        @default("bendahara")
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id           String        @id @default(dbgenerated("gen_random_uuid()::text"))
+  name         String        @unique
+  password     String
+  role         String        @default("bendahara")
+  createdAt    DateTime      @default(now())
   transactions Transaction[]
 }
 
 model Category {
-  id        String        @id @default(cuid())
-  name      String
-  type      String        @default("pengeluaran")
-  createdAt DateTime      @default(now())
+  id           String        @id @default(dbgenerated("gen_random_uuid()::text"))
+  name         String
+  type         String
   transactions Transaction[]
 }
 
 model Transaction {
-  id          String    @id @default(cuid())
-  type        String    @default("pengeluaran")
+  id          String   @id @default(dbgenerated("gen_random_uuid()::text"))
+  type        String
   amount      Int
-  description String
-  date        DateTime  @default(now())
+  description String   @default("")
+  date        DateTime @default(now())
   userId      String
   categoryId  String
-  user        User      @relation(fields: [userId], references: [id])
-  category    Category  @relation(fields: [categoryId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+  category    Category @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Student {
+  id          String    @id @default(dbgenerated("gen_random_uuid()::text"))
+  name        String    @unique
+  classNumber Int
+  isActive    Boolean   @default(true)
+  payments    Payment[]
+}
+
+model PaymentPeriod {
+  id        String    @id @default(dbgenerated("gen_random_uuid()::text"))
+  label     String
+  startDate DateTime
+  endDate   DateTime
+  payments  Payment[]
+}
+
+model Payment {
+  id        String        @id @default(dbgenerated("gen_random_uuid()::text"))
+  studentId String
+  periodId  String
+  amount    Int           @default(0)
+  fine      Int           @default(0)
+  status    String        @default("BELUM")
+  paidAt    DateTime?
+  student   Student      @relation(fields: [studentId], references: [id])
+  period    PaymentPeriod @relation(fields: [periodId], references: [id])
+
+  @@unique([studentId, periodId])
 }
