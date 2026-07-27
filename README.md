@@ -5,9 +5,6 @@ Aplikasi kas kelas berbasis web untuk mengelola keuangan kas siswa. Built dengan
 ---
 
 ## Demo
-
-**Live:** [https://kas-kelas-three.vercel.app](https://kas-kelas-three.vercel.app)
-
 ---
 
 ## Akun Login
