@@ -2,6 +2,12 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { z } from "zod"
+
+const updateSchema = z.object({
+  name: z.string().min(1).max(100).trim().optional(),
+  isActive: z.boolean().optional(),
+})
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
@@ -10,10 +16,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
   try {
     const { id } = await params
-    const { name, isActive } = await req.json()
+    const body = await req.json()
+    const parsed = updateSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Input tidak valid" }, { status: 400 })
+    }
     const student = await prisma.student.update({
       where: { id },
-      data: { ...(name && { name }), ...(isActive !== undefined && { isActive }) },
+      data: parsed.data,
     })
     return NextResponse.json(student)
   } catch {

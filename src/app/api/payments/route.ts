@@ -2,8 +2,16 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { z } from "zod"
 
 export const dynamic = "force-dynamic"
+
+const paymentSchema = z.object({
+  studentId: z.string().min(1),
+  periodId: z.string().min(1),
+  amount: z.coerce.number().int().positive(),
+  status: z.enum(["LUNAS", "BELUM"]),
+})
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -38,23 +46,29 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const { studentId, periodId, amount, status } = await req.json()
-  if (!studentId || !periodId || !amount) {
-    return NextResponse.json({ error: "studentId, periodId, amount required" }, { status: 400 })
-  }
+  try {
+    const body = await req.json()
+    const parsed = paymentSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Input tidak valid" }, { status: 400 })
+    }
+    const { studentId, periodId, amount, status } = parsed.data
 
-  const existing = await prisma.payment.findUnique({ where: { studentId_periodId: { studentId, periodId } } })
+    const existing = await prisma.payment.findUnique({ where: { studentId_periodId: { studentId, periodId } } })
 
-  if (existing) {
-    const updated = await prisma.payment.update({
-      where: { id: existing.id },
-      data: { amount: status === "LUNAS" ? amount : existing.amount, status, paidAt: status === "LUNAS" ? new Date() : null },
+    if (existing) {
+      const updated = await prisma.payment.update({
+        where: { id: existing.id },
+        data: { amount: status === "LUNAS" ? amount : existing.amount, status, paidAt: status === "LUNAS" ? new Date() : null },
+      })
+      return NextResponse.json(updated)
+    }
+
+    const created = await prisma.payment.create({
+      data: { studentId, periodId, amount, status: "LUNAS", paidAt: new Date() },
     })
-    return NextResponse.json(updated)
+    return NextResponse.json(created)
+  } catch {
+    return NextResponse.json({ error: "Gagal update pembayaran" }, { status: 500 })
   }
-
-  const created = await prisma.payment.create({
-    data: { studentId, periodId, amount, status: "LUNAS", paidAt: new Date() },
-  })
-  return NextResponse.json(created)
 }

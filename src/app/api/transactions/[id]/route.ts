@@ -2,6 +2,15 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { z } from "zod"
+
+const updateSchema = z.object({
+  type: z.enum(["pemasukan", "pengeluaran"]).optional(),
+  amount: z.coerce.number().int().positive().optional(),
+  categoryId: z.string().min(1).optional(),
+  description: z.string().max(500).optional(),
+  date: z.string().optional(),
+})
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions)
@@ -10,13 +19,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
   try {
     const { id } = await params
-    const { type, amount, categoryId, description, date } = await req.json()
+    const body = await req.json()
+    const parsed = updateSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Input tidak valid", details: parsed.error.flatten().fieldErrors }, { status: 400 })
+    }
+    const data = parsed.data
     const tx = await prisma.transaction.update({
       where: { id },
       data: {
-        type, amount: parseInt(amount), categoryId,
-        description: description || "",
-        date: date ? new Date(date) : undefined,
+        ...data,
+        amount: data.amount !== undefined ? data.amount : undefined,
+        date: data.date ? new Date(data.date) : undefined,
       },
       include: { category: true },
     })
