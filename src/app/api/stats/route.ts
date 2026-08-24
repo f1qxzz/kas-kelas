@@ -12,41 +12,45 @@ export async function GET() {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const startOfYear = new Date(now.getFullYear(), 0, 1)
+  const dayAgo = new Date(now.getTime() - 7 * 86400000)
 
-  const [payments, outcomeTxns, incomeTxns] = await Promise.all([
-    prisma.payment.findMany({ where: { status: "LUNAS" }, select: { amount: true, paidAt: true } }),
-    prisma.transaction.findMany({ where: { type: "pengeluaran" }, select: { amount: true, date: true } }),
-    prisma.transaction.findMany({ where: { type: "pemasukan" }, select: { amount: true, date: true } }),
+  const [paidPayments, monthPayments, outcomeTxns, monthOutcomeTxns, incomeTxns, monthIncomeTxns] = await Promise.all([
+    prisma.payment.findMany({ where: { status: "LUNAS", paidAt: { gte: dayAgo } }, select: { amount: true, paidAt: true } }),
+    prisma.payment.findMany({ where: { status: "LUNAS", paidAt: { gte: startOfMonth } }, select: { amount: true, paidAt: true } }),
+    prisma.transaction.findMany({ where: { type: "pengeluaran", date: { gte: dayAgo } }, select: { amount: true, date: true } }),
+    prisma.transaction.findMany({ where: { type: "pengeluaran", date: { gte: startOfMonth } }, select: { amount: true, date: true } }),
+    prisma.transaction.findMany({ where: { type: "pemasukan", date: { gte: dayAgo } }, select: { amount: true, date: true } }),
+    prisma.transaction.findMany({ where: { type: "pemasukan", date: { gte: startOfMonth } }, select: { amount: true, date: true } }),
   ])
 
-  const payTotal = (p: { amount: number }) => p.amount
+  // Total saldo: use aggregate for all-time
+  const [totalPaid, totalIncome, totalOutcome] = await Promise.all([
+    prisma.payment.aggregate({ where: { status: "LUNAS" }, _sum: { amount: true } }),
+    prisma.transaction.aggregate({ where: { type: "pemasukan" }, _sum: { amount: true } }),
+    prisma.transaction.aggregate({ where: { type: "pengeluaran" }, _sum: { amount: true } }),
+  ])
 
-  const totalIncome = payments.reduce((s, p) => s + payTotal(p), 0) + incomeTxns.reduce((s, t) => s + t.amount, 0)
-  const totalOutcome = outcomeTxns.reduce((s, t) => s + t.amount, 0)
-  const saldo = totalIncome - totalOutcome
+  const saldo = (totalPaid._sum.amount ?? 0) + (totalIncome._sum.amount ?? 0) - (totalOutcome._sum.amount ?? 0)
 
-  const monthIuran = payments.filter((p) => p.paidAt && p.paidAt >= startOfMonth).reduce((s, p) => s + payTotal(p), 0)
-  const monthLain = incomeTxns.filter((t) => t.date >= startOfMonth).reduce((s, t) => s + t.amount, 0)
+  const monthIuran = monthPayments.reduce((s, p) => s + p.amount, 0)
+  const monthLain = monthIncomeTxns.reduce((s, t) => s + t.amount, 0)
   const monthIncome = monthIuran + monthLain
-  const monthOutcome = outcomeTxns.filter((t) => t.date >= startOfMonth).reduce((s, t) => s + t.amount, 0)
+  const monthOutcome = monthOutcomeTxns.reduce((s, t) => s + t.amount, 0)
 
-  const yearIncome = payments.filter((p) => p.paidAt && p.paidAt >= startOfYear).reduce((s, p) => s + payTotal(p), 0)
-    + incomeTxns.filter((t) => t.date >= startOfYear).reduce((s, t) => s + t.amount, 0)
-  const yearOutcome = outcomeTxns.filter((t) => t.date >= startOfYear).reduce((s, t) => s + t.amount, 0)
-
+  // Last 7 days chart
   const last7: { date: string; income: number; outcome: number }[] = []
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
     const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate())
     const dayEnd = new Date(dayStart.getTime() + 86400000)
-    const dayIncome = payments.filter((p) => p.paidAt && p.paidAt >= dayStart && p.paidAt < dayEnd).reduce((s, p) => s + payTotal(p), 0)
+    const dayIncome = paidPayments.filter((p) => p.paidAt! >= dayStart && p.paidAt! < dayEnd).reduce((s, p) => s + p.amount, 0)
       + incomeTxns.filter((t) => t.date >= dayStart && t.date < dayEnd).reduce((s, t) => s + t.amount, 0)
     const dayOutcome = outcomeTxns.filter((t) => t.date >= dayStart && t.date < dayEnd).reduce((s, t) => s + t.amount, 0)
     last7.push({ date: d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric" }), income: dayIncome, outcome: dayOutcome })
   }
 
-  const allDates = [...payments.filter((p) => p.paidAt).map((p) => p.paidAt!), ...incomeTxns.map((t) => t.date), ...outcomeTxns.map((t) => t.date)]
+  const allDates = [...paidPayments.map((p) => p.paidAt!), ...incomeTxns.map((t) => t.date), ...outcomeTxns.map((t) => t.date)]
   const lastUpdated = allDates.length > 0 ? new Date(Math.max(...allDates.map((d) => d.getTime()))).toISOString() : now.toISOString()
 
-  return NextResponse.json({ saldo, month: { income: monthIncome, outcome: monthOutcome }, year: { income: yearIncome, outcome: yearOutcome }, chart: last7, lastUpdated, monthIncomeBreakdown: { iuran: monthIuran, lainnya: monthLain } })
+  return NextResponse.json({ saldo, month: { income: monthIncome, outcome: monthOutcome }, chart: last7, lastUpdated, monthIncomeBreakdown: { iuran: monthIuran, lainnya: monthLain } })
 }
