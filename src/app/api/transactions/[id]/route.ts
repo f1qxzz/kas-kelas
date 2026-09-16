@@ -49,7 +49,8 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const { id } = await params
     await prisma.transaction.delete({ where: { id } })
     return NextResponse.json({ ok: true })
-  } catch {
-    return NextResponse.json({ error: "Gagal hapus" }, { status: 500 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Unknown error"
+    return NextResponse.json({ error: "Gagal hapus", detail: msg }, { status: 500 })
   }
 }

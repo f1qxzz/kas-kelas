@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs"
 const prisma = new PrismaClient()
 
 const students = [
-  "Aulia","Abel","Aurel","Aurora","Ayla","Kezia","Bilqis","Tata","Puri","Cheisia",
+  "Abel","Aulia","Aurel","Aurora","Ayla","Kezia","Bilqis","Tata","Puri","Cheisia",
   "Destiana","Dhea","Dian","Cita","Fariha","Felita","Feodora","Fiorella","Gaudya","Kartika",
   "Kharisma","Lutfiana","Marsya","Khalisa","Rizkya","Rosiana","Sagita","Septiani","Shovi","Shyfa",
   "Talita","Tiara","Vinsensia","Vion","Yuda","Zeva",
