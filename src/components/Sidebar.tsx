@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { signOut } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { LayoutDashboard, TrendingDown, TrendingUp, Users, LogOut, Wallet, FileText } from "lucide-react"
 
 const menu = [
@@ -15,6 +15,9 @@ const menu = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const role = (session?.user as { role?: string } | undefined)?.role
+  const visibleMenu = role === "user" ? menu.filter((i) => i.href === "/status-bayar") : menu
 
   return (
     <>
@@ -25,7 +28,7 @@ export function Sidebar() {
           </div>
         </div>
         <nav className="mt-2 flex flex-1 flex-col items-center gap-0.5">
-          {menu.map((item) => {
+          {visibleMenu.map((item) => {
             const active = pathname === item.href
             return (
               <Link
@@ -58,7 +61,7 @@ export function Sidebar() {
       </aside>
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 flex items-center border-t border-white/[0.06] bg-surface/95 backdrop-blur-lg md:hidden">
-        {menu.map((item) => {
+        {visibleMenu.map((item) => {
           const active = pathname === item.href
           return (
             <Link

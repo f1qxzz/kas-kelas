@@ -15,6 +15,10 @@ const week2Paid = 36
 const week3Paid = 32
 
 async function main() {
+  if (process.env.ALLOW_SEED !== "true") {
+    console.error("Seed menghapus SELURUH data. Jalankan dengan ALLOW_SEED=true kalau yakin.")
+    process.exit(1)
+  }
   await prisma.payment.deleteMany()
   await prisma.paymentPeriod.deleteMany()
   await prisma.student.deleteMany()

@@ -2,16 +2,24 @@
 
 import { useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Sidebar } from "@/components/Sidebar"
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const pathname = usePathname()
+  const role = (session?.user as { role?: string } | undefined)?.role
 
   useEffect(() => {
     if (status !== "loading" && !session) router.push("/login")
   }, [session, status, router])
+
+  // Role "user" cuma boleh akses status bayar
+  useEffect(() => {
+    if (status === "loading" || !session) return
+    if (role === "user" && pathname !== "/status-bayar") router.replace("/status-bayar")
+  }, [session, status, role, pathname, router])
 
   if (status === "loading") {
     return (

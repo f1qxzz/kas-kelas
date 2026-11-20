@@ -4,38 +4,41 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
+export const revalidate = 30
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const role = (session?.user as { role?: string } | undefined)?.role
+  if (!session?.user || (role !== "bendahara" && role !== "wali")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
 
   const periodId = req.nextUrl.searchParams.get("periodId")
 
-  const periods = await prisma.paymentPeriod.findMany({ orderBy: { startDate: "asc" } })
+  const [periods, payments, incomeTxns] = await Promise.all([
+    prisma.paymentPeriod.findMany({ select: { id: true, label: true, startDate: true }, orderBy: { startDate: "asc" } }),
+    prisma.payment.findMany({
+      where: { status: "LUNAS" },
+      select: { amount: true, paidAt: true, student: { select: { name: true } }, period: { select: { id: true, label: true, startDate: true } } },
+      orderBy: { paidAt: "desc" },
+    }),
+    prisma.transaction.findMany({
+      where: { type: "pemasukan" },
+      select: { id: true, amount: true, categoryId: true, date: true, description: true, category: { select: { id: true, name: true } } },
+      orderBy: { date: "desc" },
+    }),
+  ])
 
-  let payments = await prisma.payment.findMany({
-    where: { status: "LUNAS" },
-    include: { student: { select: { name: true } }, period: { select: { id: true, label: true, startDate: true } } },
-    orderBy: { paidAt: "desc" },
-  })
-
-  const incomeTxns = await prisma.transaction.findMany({
-    where: { type: "pemasukan" },
-    include: { category: { select: { id: true, name: true } } },
-    orderBy: { date: "desc" },
-  })
-
-  const payTotal = (p: { amount: number }) => p.amount
-
-  const totalIuran = payments.reduce((s, p) => s + payTotal(p), 0)
+  const totalIuran = payments.reduce((s, p) => s + p.amount, 0)
   const totalNonIuran = incomeTxns.reduce((s, t) => s + t.amount, 0)
 
+  let filteredPayments = payments
   if (periodId) {
-    payments = payments.filter((p) => p.period.id === periodId)
+    filteredPayments = payments.filter((p) => p.period.id === periodId)
   }
 
-  const paymentsByPeriod = new Map<string, { label: string; items: typeof payments; total: number }>()
-  for (const p of payments) {
+  const paymentsByPeriod = new Map<string, { label: string; items: typeof filteredPayments; total: number }>()
+  for (const p of filteredPayments) {
     if (!p.paidAt) continue
     const pid = p.period.id
     if (!paymentsByPeriod.has(pid)) {
@@ -43,15 +46,18 @@ export async function GET(req: NextRequest) {
     }
     const w = paymentsByPeriod.get(pid)!
     w.items.push(p)
-    w.total += payTotal(p)
+    w.total += p.amount
   }
 
-  return NextResponse.json({
-    periods,
-    selectedIuran: periodId
-      ? paymentsByPeriod.get(periodId) || null
-      : (paymentsByPeriod.values().next().value || null),
-    nonIuranIncome: incomeTxns,
-    totalIncome: totalIuran + totalNonIuran,
-  })
+  return NextResponse.json(
+    {
+      periods,
+      selectedIuran: periodId
+        ? paymentsByPeriod.get(periodId) || null
+        : (paymentsByPeriod.values().next().value || null),
+      nonIuranIncome: incomeTxns,
+      totalIncome: totalIuran + totalNonIuran,
+    },
+    { headers: { "Cache-Control": "s-maxage=30, stale-while-revalidate=60" } }
+  )
 }

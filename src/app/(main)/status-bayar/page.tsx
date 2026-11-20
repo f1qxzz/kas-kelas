@@ -79,11 +79,12 @@ export default function StatusBayarPage() {
     setToggling(studentId)
     const newStatus = current?.status === "LUNAS" ? "BELUM" : "LUNAS"
     const total = current?.amount || NOMINAL
-    await fetch("/api/payments", {
+    const res = await fetch("/api/payments", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ studentId, periodId: selectedPeriod, amount: total, status: newStatus }),
     })
+    if (!res.ok) alert(`Gagal update status. (${res.status})`)
     setToggling(null)
     load()
   }
@@ -91,14 +92,16 @@ export default function StatusBayarPage() {
   async function bayarSemua() {
     if (!selectedPeriod || !confirm(`Bayarin ${belum} siswa? Terkumpul Rp ${rupiah(belum * NOMINAL)}`)) return
     const unpaid = activeStudents.filter((s) => s.payment?.status !== "LUNAS")
-    await Promise.allSettled(unpaid.map((s) => {
+    const results = await Promise.allSettled(unpaid.map((s) => {
       const total = s.payment?.amount || NOMINAL
       return fetch("/api/payments", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ studentId: s.id, periodId: selectedPeriod, amount: total, status: "LUNAS" }),
-      })
+      }).then(r => { if (!r.ok) throw new Error(`${r.status}`); return r })
     }))
+    const failed = results.filter(r => r.status === "rejected").length
+    if (failed) alert(`Gagal update ${failed} siswa. Coba lagi.`)
     load()
   }
 

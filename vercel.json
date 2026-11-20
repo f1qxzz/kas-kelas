@@ -1,3 +1,4 @@
 {
-  "name": "kas-kelas-three"
+  "name": "kas-kelas-three",
+  "framework": "nextjs"
 }

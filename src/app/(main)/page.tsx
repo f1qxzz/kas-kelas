@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { motion } from "motion/react"
-import { Wallet, TrendingUp, TrendingDown, Clock, RefreshCw } from "lucide-react"
+import { Wallet, TrendingUp, TrendingDown, Clock, RefreshCw, Sun, Moon, CloudSun } from "lucide-react"
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
+import { useSession } from "next-auth/react"
 
 function rupiah(n: number) {
   return "Rp " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
@@ -23,6 +24,7 @@ function Skeleton({ className }: { className?: string }) {
 
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
+  const { data: session } = useSession()
 
   const load = useCallback(async () => {
     const res = await fetch("/api/stats")
@@ -31,12 +33,39 @@ export default function Dashboard() {
 
   useEffect(() => { load() }, [load])
 
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour >= 5 && hour < 11) return { text: "Selamat pagi", icon: Sun, iconBg: "bg-yellow-500/10", iconColor: "text-yellow-400" }
+    if (hour >= 11 && hour < 15) return { text: "Selamat siang", icon: Sun, iconBg: "bg-orange-500/10", iconColor: "text-orange-400" }
+    if (hour >= 15 && hour < 18) return { text: "Selamat sore", icon: CloudSun, iconBg: "bg-amber-500/10", iconColor: "text-amber-400" }
+    return { text: "Selamat malam", icon: Moon, iconBg: "bg-indigo-500/10", iconColor: "text-indigo-400" }
+  }
+
+  const greeting = getGreeting()
+  const userName = session?.user?.name || "Pengguna"
+  const capitalizedName = userName.charAt(0).toUpperCase() + userName.slice(1)
+
   const lastUpdated = stats?.lastUpdated
     ? new Date(stats.lastUpdated).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
     : "..."
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        className="flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-card/80 p-4 md:p-6 shadow-xl shadow-black/30 backdrop-blur-xl"
+      >
+        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${greeting.iconBg}`}>
+          <greeting.icon size={22} className={greeting.iconColor} />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-400">{greeting.text},</p>
+          <p className="text-xl font-bold tracking-tight">{capitalizedName}</p>
+        </div>
+      </motion.div>
+
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
